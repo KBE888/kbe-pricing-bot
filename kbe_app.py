@@ -113,7 +113,7 @@ if "messages" not in st.session_state:
 try:
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash-latest",
+        model_name="gemini-1.5-pro", 
         system_instruction=system_instruction
     )
     if "chat_session" not in st.session_state or st.session_state.chat_session is None:
