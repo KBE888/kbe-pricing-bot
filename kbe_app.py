@@ -6,6 +6,7 @@ import time
 # 0. 核心配置与品牌信息 (安全读取版)
 # ==========================================
 try:
+    # 这里的密码会安全地从你刚刚建的 .streamlit/secrets.toml 里读取
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 except KeyError:
     st.error("⚠️ 未找到 API Key！请确保 `.streamlit/secrets.toml` 文件已正确配置。")
@@ -34,7 +35,7 @@ st.markdown(f"""
 # ==========================================
 st.sidebar.image(LOGO_URL, width=220)
 st.sidebar.title("❄️ KBE 客服系统")
-st.sidebar.caption(f"powered by Gemini 1.5 Flash")
+st.sidebar.caption(f"powered by Gemini 2.5 Flash")
 
 col1, col2 = st.columns([1, 4])
 with col1:
@@ -112,10 +113,13 @@ if "messages" not in st.session_state:
 
 try:
     genai.configure(api_key=GEMINI_API_KEY)
-   model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash",  # ✅ 换成这个最新一代的模型
+    
+    # ✅ 重点修改：这里换成了支持你账号的最新版模型
+    model = genai.GenerativeModel(
+        model_name="gemini-2.5-flash",
         system_instruction=system_instruction
     )
+    
     if "chat_session" not in st.session_state or st.session_state.chat_session is None:
         st.session_state.chat_session = model.start_chat(history=[])
 except Exception as e:
@@ -167,7 +171,6 @@ if prompt := st.chat_input("您可以这样问：我要洗两台空调,一台挂
                     time.sleep(0.02) 
         except Exception as e:
             status_placeholder.empty()
-            # 【关键修改】这里会直接把真实的报错信息展示出来！
             full_response = f"⚠️ 开发者调试信息 - 抱歉，程序遇到了错误：\n\n`{str(e)}`"
             st.markdown(full_response)
         
