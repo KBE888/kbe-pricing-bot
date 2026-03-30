@@ -30,16 +30,49 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. 侧边栏：语言选择与控制
+# 2. 侧边栏：语言、公司信息与控制
 # ==========================================
 with st.sidebar:
     st.image(LOGO_URL, width=220)
     st.markdown("---")
     
     st.header("🌐 Language / 语言")
-    # 语言选择器
     selected_lang = st.radio("Choose your preferred language:", ["中文", "English"], label_visibility="collapsed")
     
+    st.markdown("---")
+    
+    # 根据选择的语言显示公司信息
+    if selected_lang == "中文":
+        st.header("📞 联系我们")
+        st.markdown("""
+        **🕒 营业时间:**
+        - 周一至周五: 8:30 AM - 5:30 PM
+        - 周六: 8:30 AM - 12:30 PM
+        
+        **📱 联系方式:**
+        - 电话: `65067330`
+        - 手机: `88972601`
+        
+        **🌐 了解更多:**
+        - 网站: [www.kbe.com.sg](https://www.kbe.com.sg)
+        - 关注我们的: Facebook, Instagram, 小红书, TikTok
+        """)
+    else:
+        st.header("📞 Contact Us")
+        st.markdown("""
+        **🕒 Operating Hours:**
+        - Mon to Fri: 8:30 AM - 5:30 PM
+        - Sat: 8:30 AM - 12:30 PM
+        
+        **📱 Contact Info:**
+        - Tel: `65067330`
+        - Mobile: `88972601`
+        
+        **🌐 Find Out More:**
+        - Website: [www.kbe.com.sg](https://www.kbe.com.sg)
+        - Follow us on: Facebook, Instagram, Xiaohongshu, TikTok
+        """)
+
     st.markdown("---")
     st.header("⚙️ 对话控制 / Controls")
     if st.button("🗑️ 清空对话 / Clear Chat"):
@@ -85,7 +118,7 @@ with col2:
 st.caption(subtitle_text)
 
 # ==========================================
-# 4. 核心系统指令 (升级为冷气专家)
+# 4. 核心系统指令 (加入了公司全部营业信息)
 # ==========================================
 system_instruction = f"""
 你现在是 KBE 公司的专属在线客服，同时也是一名拥有多年经验的【专业冷气维修专家】。
@@ -95,6 +128,13 @@ system_instruction = f"""
 1. 根据 KBE 价目表提供准确报价。
 2. 运用专业知识，耐心解答顾客关于冷气机的一般性故障问题（如漏水、不冷、异响、结冰等）以及日常保养建议。
 3. 态度专业、热情，并在解答故障时，自然地引导顾客预约 KBE 的上门检查或清洗服务。
+
+【KBE 官方公司信息与联系方式】
+- 营业时间：周一至周五 8:30 AM - 5:30 PM；周六 8:30 AM - 12:30 PM。
+- 电话：65067330
+- 手机号：88972601
+- 官方网站：www.kbe.com.sg
+- 社交平台：Facebook, Instagram, 小红书, TikTok 等。
 
 【KBE 官方服务价目表】
 1. 普通清洗 (Normal Wash) - 壁挂式空调 (Wall-mounted)
@@ -122,10 +162,10 @@ R32: 0~100 PSI: $145 | 101~130 PSI: $200 | 131~160 PSI: $220
 如果顾客询问清洗包含什么，请向他们列出：检查气体压力、清洁蒸发器盘管、清洁过滤网、清洁排水盘、清理排水管、检查电子元件、检查冷气设置、检查泄漏、测试排水流量、润滑部件、检查冷却气压、检查温度、检查气流量。
 
 【客服绝对红线与行为规则】
-1. 报价底线：针对价目表上有的服务，直接计算总价。对于【价目表上没有的任何维修项目或特殊机型清洗】，**绝对不要自行捏造价格**，必须礼貌告知：“这种情况需要专业师傅现场评估”，并提供联系方式。
+1. 报价底线：针对价目表上有的服务，直接计算总价。对于【价目表上没有的任何维修项目或特殊机型清洗】，绝对不要自行捏造价格，必须礼貌告知需要专业师傅现场评估。
 2. 专家解答：如果顾客描述冷气故障（例如漏水），你应该先给出专业的分析（例如：通常是因为排水管堵塞、过滤网太脏或冷媒不足），然后建议他们进行清洗或检查。
 3. 拒绝讲价：统一定价，委婉拒绝折扣要求。
-4. 引导预约：在对话中合适的时候，告诉顾客：“如需预约服务或进一步咨询，请在常规工作时间联系 88972601。”
+4. 引导预约与联系：在需要人工介入或引导预约时，告诉顾客可以拨打我们的电话 65067330 或手机 88972601（请提醒我们的营业时间）。也可以建议顾客访问我们的官网 www.kbe.com.sg 或去我们的社交平台（Facebook, Instagram, 小红书, TikTok）了解更多资讯。
 """
 
 # ==========================================
@@ -168,18 +208,16 @@ if prompt := st.chat_input(chat_placeholder):
             response = st.session_state.chat_session.send_message(prompt, stream=True)
             full_response = ""
             
-            # ✅ 打字机修复：在循环外部创建一个固定的文字框
+            # 打字机修复：在循环外部创建一个固定的文字框
             message_placeholder = st.empty()
             
             for chunk in response:
                 if chunk.text:
                     status_placeholder.empty()
                     full_response += chunk.text
-                    # ✅ 让新字不断刷新在这个固定的框里，加上打字光标 ▌
                     message_placeholder.markdown(full_response + " ▌")
                     time.sleep(0.02) 
             
-            # ✅ 循环结束后，去掉光标，打印最终完整的话
             message_placeholder.markdown(full_response)
             
         except Exception as e:
