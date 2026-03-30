@@ -168,27 +168,20 @@ if prompt := st.chat_input(chat_placeholder):
             response = st.session_state.chat_session.send_message(prompt, stream=True)
             full_response = ""
             
-            # ✅ 新增：在循环外面创建一个固定的“文字框”
-            message_placeholder = st.empty() 
+            # ✅ 打字机修复：在循环外部创建一个固定的文字框
+            message_placeholder = st.empty()
             
             for chunk in response:
                 if chunk.text:
-                    status_placeholder.empty() # 隐藏加载提示
+                    status_placeholder.empty()
                     full_response += chunk.text
-                    # ✅ 修改：让新字不断刷新在这个固定的框里，并加一个打字光标 ▌ 显得更真实
+                    # ✅ 让新字不断刷新在这个固定的框里，加上打字光标 ▌
                     message_placeholder.markdown(full_response + " ▌")
                     time.sleep(0.02) 
             
-            # ✅ 循环结束后，把完整的话打印出来（去掉那个打字光标）
+            # ✅ 循环结束后，去掉光标，打印最终完整的话
             message_placeholder.markdown(full_response)
             
-        except Exception as e:
-            status_placeholder.empty()
-            full_response = f"{error_msg}\n\n`{str(e)}`"
-            st.markdown(full_response)
-        
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
-                    time.sleep(0.02) 
         except Exception as e:
             status_placeholder.empty()
             full_response = f"{error_msg}\n\n`{str(e)}`"
