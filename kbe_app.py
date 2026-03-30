@@ -3,69 +3,39 @@ import google.generativeai as genai
 import time
 
 # ==========================================
-# 0. 核心配置与品牌信息 (⚠️ 安全升级版)
+# 0. 核心配置与品牌信息 (安全读取版)
 # ==========================================
-# 现在的 API Key 已经安全地锁在了 secrets 保险箱里，不会在代码中暴露！
 try:
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 except KeyError:
-    st.error("⚠️ 未找到 API Key！请确保您已经在本地创建了 `.streamlit/secrets.toml` 文件，或者在线上部署时配置了 Secrets。")
+    st.error("⚠️ 未找到 API Key！请确保 `.streamlit/secrets.toml` 文件已正确配置。")
     st.stop()
 
-BRAND_COLOR = "#199ad6"  # KBE 品牌颜色
+BRAND_COLOR = "#199ad6"
 LOGO_URL = "https://www.kbe.com.sg/wp-content/uploads/2017/07/kbe-air-con-servicing-Singapore-Logo.png"
 
 # ==========================================
-# 1. 页面基本设置与界面美化 (Custom CSS)
+# 1. 页面基本设置与界面美化
 # ==========================================
-st.set_page_config(
-    page_title="KBE ❄️ 智能报价客服",
-    page_icon="❄️",
-    layout="centered"
-)
+st.set_page_config(page_title="KBE ❄️ 智能报价客服", page_icon="❄️", layout="centered")
 
-# 注入 CSS 以自定义品牌颜色
 st.markdown(f"""
 <style>
-    /* 调整页面主体和侧边栏 */
-    [data-testid="stSidebarNav"] {{
-        border-right: 1px solid #f0f2f6;
-    }}
-    
-    /* 自定义聊天输入框获取焦点时的边框颜色 */
-    div[data-testid="stChatInput"] input:focus {{
-        border-color: {BRAND_COLOR};
-    }}
-
-    /* 自定义按钮样式 */
-    .stButton>button {{
-        background-color: {BRAND_COLOR};
-        color: white;
-        border-radius: 20px;
-        border: none;
-        padding: 5px 15px;
-    }}
-    .stButton>button:hover {{
-        background-color: {BRAND_COLOR}aa; /* 稍微透明 */
-        color: white;
-    }}
-    
-    /* AI 客服回复的气泡样式微调 */
-    [data-testid="stChatMessageAssistant"] .stChatMessageContent div.stMarkdown {{
-        border-left: 3px solid {BRAND_COLOR};
-        padding-left: 10px;
-    }}
+    [data-testid="stSidebarNav"] {{ border-right: 1px solid #f0f2f6; }}
+    div[data-testid="stChatInput"] input:focus {{ border-color: {BRAND_COLOR}; }}
+    .stButton>button {{ background-color: {BRAND_COLOR}; color: white; border-radius: 20px; border: none; padding: 5px 15px; }}
+    .stButton>button:hover {{ background-color: {BRAND_COLOR}aa; color: white; }}
+    [data-testid="stChatMessageAssistant"] .stChatMessageContent div.stMarkdown {{ border-left: 3px solid {BRAND_COLOR}; padding-left: 10px; }}
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. 界面头部 (Logo & 标题)
+# 2. 界面头部
 # ==========================================
-st.sidebar.image(LOGO_URL, width=220) # 在侧边栏也显示一个
+st.sidebar.image(LOGO_URL, width=220)
 st.sidebar.title("❄️ KBE 客服系统")
 st.sidebar.caption(f"powered by Gemini 1.5 Flash")
 
-# 主界面头部
 col1, col2 = st.columns([1, 4])
 with col1:
     st.image(LOGO_URL, width=120)
@@ -74,7 +44,7 @@ with col2:
 st.caption("基于 KBE 标准服务价目表为您提供即时报价。")
 
 # ==========================================
-# 3. 核心：系统指令 (System Instructions)
+# 3. 系统指令 (System Instructions)
 # ==========================================
 system_instruction = """
 你现在是 KBE 公司的专属在线客服。你的态度必须专业、热情、且回答要简明扼要，绝对不要废话。请根据顾客使用的语言（中文或英文）进行回复。
@@ -142,18 +112,14 @@ if "messages" not in st.session_state:
 
 try:
     genai.configure(api_key=GEMINI_API_KEY)
-    
-    # 实例化模型并传入 System Instruction
     model = genai.GenerativeModel(
         model_name="gemini-1.5-flash",
         system_instruction=system_instruction
     )
-    
-    # 初始化 Gemini 的对话历史对象
     if "chat_session" not in st.session_state or st.session_state.chat_session is None:
         st.session_state.chat_session = model.start_chat(history=[])
 except Exception as e:
-    st.error(f"API 初始化失败，请检查您的网络或 API Key: {e}")
+    st.error(f"API 初始化失败: {e}")
     st.stop()
 
 # ==========================================
@@ -162,7 +128,6 @@ except Exception as e:
 with st.sidebar:
     st.markdown("---")
     st.header("⚙️ 对话控制")
-    # 添加一个清除对话的按钮
     if st.button("🗑️ 清空当前对话历史"):
         st.session_state.messages = []
         st.session_state.chat_session = None
@@ -173,49 +138,37 @@ with st.sidebar:
 # ==========================================
 # 6. 渲染聊天界面
 # ==========================================
-# 显示欢迎语
 if not st.session_state.messages:
     with st.chat_message("assistant", avatar="❄️"):
-        st.markdown(f"<div style='color:{BRAND_COLOR};'>您好！我是 KBE 智能客服，请问今天有什么冷气相关业务可以帮您报价？例如：‘我想洗3台普通壁挂冷气’或‘补充 R32 冷媒大概多少钱？’</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='color:{BRAND_COLOR};'>您好！我是 KBE 智能客服，请问今天有什么冷气相关业务可以帮您报价？</div>", unsafe_allow_html=True)
 
-# 显示历史消息
 for message in st.session_state.messages:
-    # 调整辅助回复的头像
     avatar = "❄️" if message["role"] == "assistant" else None
     with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
 
-# 接收用户输入
-if prompt := st.chat_input("您可以这样问：洗两台普通冷气要多少钱？"):
-    
-    # 1. 把用户的问题显示在界面上
+if prompt := st.chat_input("您可以这样问：我要洗两台空调,一台挂在墙壁的,一台是celling的"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # 2. 调用 Gemini API 获取回复
     with st.chat_message("assistant", avatar="❄️"):
-        # 显示加载中（优化用户体验）
         status_placeholder = st.empty()
         status_placeholder.write("KBE 客服正在为您计算报价...")
         
         try:
-            # 使用流式传输（Typing 效果）
             response = st.session_state.chat_session.send_message(prompt, stream=True)
-            
             full_response = ""
             for chunk in response:
                 if chunk.text:
-                    status_placeholder.empty() # 隐藏加载中
+                    status_placeholder.empty()
                     full_response += chunk.text
-                    # 显示打字效果
                     st.empty().markdown(full_response)
                     time.sleep(0.02) 
-
         except Exception as e:
             status_placeholder.empty()
-            full_response = "对不起，我现在在和服务器通信时遇到了一点小麻烦，请稍后再试，或直接拨打 88972601 联系我们。"
+            # 【关键修改】这里会直接把真实的报错信息展示出来！
+            full_response = f"⚠️ 开发者调试信息 - 抱歉，程序遇到了错误：\n\n`{str(e)}`"
             st.markdown(full_response)
         
-    # 3. 将 AI 的回复存入状态记录
     st.session_state.messages.append({"role": "assistant", "content": full_response})
