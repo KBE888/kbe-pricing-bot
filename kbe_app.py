@@ -136,3 +136,46 @@ try:
     model = genai.GenerativeModel(
         model_name="gemini-2.5-flash",
         system_instruction=system_instruction
+    )
+    if "chat_session" not in st.session_state or st.session_state.chat_session is None:
+        st.session_state.chat_session = model.start_chat(history=[])
+except Exception as e:
+    st.error(f"API Initialization failed: {e}")
+    st.stop()
+
+# ==========================================
+# 6. 渲染聊天界面
+# ==========================================
+if not st.session_state.messages:
+    with st.chat_message("assistant", avatar="❄️"):
+        st.markdown(f"<div style='color:{BRAND_COLOR};'>{welcome_msg}</div>", unsafe_allow_html=True)
+
+for message in st.session_state.messages:
+    avatar = "❄️" if message["role"] == "assistant" else None
+    with st.chat_message(message["role"], avatar=avatar):
+        st.markdown(message["content"])
+
+if prompt := st.chat_input(chat_placeholder):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    with st.chat_message("assistant", avatar="❄️"):
+        status_placeholder = st.empty()
+        status_placeholder.write(calc_msg)
+        
+        try:
+            response = st.session_state.chat_session.send_message(prompt, stream=True)
+            full_response = ""
+            for chunk in response:
+                if chunk.text:
+                    status_placeholder.empty()
+                    full_response += chunk.text
+                    st.empty().markdown(full_response)
+                    time.sleep(0.02) 
+        except Exception as e:
+            status_placeholder.empty()
+            full_response = f"{error_msg}\n\n`{str(e)}`"
+            st.markdown(full_response)
+        
+    st.session_state.messages.append({"role": "assistant", "content": full_response})
