@@ -33,11 +33,45 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. 侧边栏：语言与公司信息
-# ==========================================
-with st.sidebar:
-    st.image(LOGO_URL, width=220)
-    st.markdown("---")
+# 公司信息展示 (带图标和链接版)
+    if st.session_state.current_lang == "中文":
+        st.header("📞 联系我们")
+        st.markdown(f"""
+        **🕒 营业时间:**
+        - 周一至五: 8:30AM - 5:30PM
+        - 周六: 8:30AM - 12:30PM
+        
+        **📱 联系方式:**
+        - 📞 电话: [65067330](tel:65067330)
+        - 💬 手机: [88972601](https://wa.me/6588972601)
+        
+        **🌐 关注我们:**
+        - 🏠 [官方网站](https://www.kbe.com.sg/)
+        - 🔵 [Facebook](https://www.facebook.com/kbeaircon/)
+        - 📸 [Instagram](https://www.instagram.com/kbe_aircon/)
+        - 📺 [YouTube](https://www.youtube.com/@kbeairconditioningengineer4458)
+        - 📕 [小红书](https://www.xiaohongshu.com/user/profile/618a1a3a00000000010257e4)
+        - 🎵 [TikTok](https://www.tiktok.com/@kbe_aircon)
+        """)
+    else:
+        st.header("📞 Contact Us")
+        st.markdown(f"""
+        **🕒 Operating Hours:**
+        - Mon-Fri: 8:30AM - 5:30PM
+        - Sat: 8:30AM - 12:30PM
+        
+        **📱 Contact Info:**
+        - 📞 Tel: [65067330](tel:65067330)
+        - 💬 Mobile: [88972601](https://wa.me/6588972601)
+        
+        **🌐 Follow Us:**
+        - 🏠 [Website](https://www.kbe.com.sg/)
+        - 🔵 [Facebook](https://www.facebook.com/kbeaircon/)
+        - 📸 [Instagram](https://www.instagram.com/kbe_aircon/)
+        - 📺 [YouTube](https://www.youtube.com/@kbeairconditioningengineer4458)
+        - 📕 [Xiaohongshu](https://www.xiaohongshu.com/user/profile/618a1a3a00000000010257e4)
+        - 🎵 [TikTok](https://www.tiktok.com/@kbe_aircon)
+        """)
     
     st.header("🌐 Language / 语言")
     default_index = 0 if st.session_state.current_lang == "中文" else 1
