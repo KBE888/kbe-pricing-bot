@@ -24,20 +24,21 @@ LOGO_URL = "https://www.kbe.com.sg/wp-content/uploads/2017/07/kbe-air-con-servic
 
 st.set_page_config(page_title="KBE AI 客服", page_icon="❄️", layout="centered")
 
-# 极致优化移动端布局
+# 极致优化移动端 UI
 st.markdown(f"""
 <style>
     div[data-testid="stHorizontalBlock"] {{ gap: 5px !important; }}
-    .stButton>button {{ border-radius: 8px; height: 2.8em; font-size: 14px; border: 1px solid #eee; }}
+    .stButton>button {{ border-radius: 8px; height: 2.8em; font-size: 13px; border: 1px solid #eee; }}
     .stChatInput {{ margin-top: -20px; }}
     .stFileUploader section {{ padding: 0 !important; }}
-    /* 侧边栏样式优化 */
-    [data-testid="stSidebar"] {{ background-color: #f8f9fa; }}
+    /* 调整社交媒体链接样式 */
+    .social-links {{ text-align: center; font-size: 12px; margin: 10px 0; }}
+    .social-links a {{ text-decoration: none; color: {BRAND_COLOR}; margin: 0 5px; }}
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. 侧边栏：公司核心资讯 (更新了新地址)
+# 2. 侧边栏：公司核心资讯 (保留地址与时间)
 # ==========================================
 with st.sidebar:
     st.image(LOGO_URL, width=180)
@@ -72,7 +73,7 @@ with st.sidebar:
         
         **☎️ Contact:**
         - Office: `65067330`
-        - 24h Hotline: `88972601`
+        - Hotline: `88972601`
         """)
     st.markdown("---")
     if st.button("🗑️ 清空对话 / Clear"):
@@ -98,28 +99,37 @@ with t_col2:
         st.rerun()
 
 lang = st.session_state.current_lang
-title = "智能客服与报价助手" if lang=="中文" else "AI Quote Assistant"
-st.markdown(f"<h3 style='color:{BRAND_COLOR}; margin-top:-10px;'>{title}</h3>", unsafe_allow_html=True)
+# 🎯 更改标题为“KBE智能客服”
+st.markdown(f"<h3 style='color:{BRAND_COLOR}; margin-top:-10px;'>{'KBE智能客服' if lang=='中文' else 'KBE AI Service'}</h3>", unsafe_allow_html=True)
 
 # ==========================================
-# 4. 横向快捷导航 (三金刚按钮)
+# 4. 横向快捷导航 (1x3 并排布局)
 # ==========================================
 b1, b2, b3 = st.columns(3)
 b1.link_button("💬 WhatsApp", "https://wa.me/6588972601", use_container_width=True)
-b2.link_button("📞 拨打电话", "tel:65067330", use_container_width=True)
-b3.link_button("🌐 官方网站", "https://www.kbe.com.sg/", use_container_width=True)
+b2.link_button("📞 拨打电话" if lang=="中文" else "📞 Call Us", "tel:65067330", use_container_width=True)
+b3.link_button("🌐 官方网站" if lang=="中文" else "🌐 Website", "https://www.kbe.com.sg/", use_container_width=True)
+
+# 🎯 移动社交媒体链接到这里
+st.markdown(f"""
+<div class="social-links">
+    <a href="https://www.facebook.com/kbeaircon/">Facebook</a> | 
+    <a href="https://www.instagram.com/kbe_aircon/">Instagram</a> | 
+    <a href="https://www.tiktok.com/@kbe_aircon">TikTok</a> | 
+    <a href="https://www.xiaohongshu.com/user/profile/618a1a3a00000000010257e4">{'小红书' if lang=='中文' else 'Xiaohongshu'}</a>
+</div>
+""", unsafe_allow_html=True)
 
 # ==========================================
-# 5. 模型初始化与商业逻辑
+# 5. 模型初始化
 # ==========================================
 system_instruction = f"""
-你现在是 KBE 公司的冷气专家。语言：{lang}。
-【重要商业政策】
-1. 检查费：上门检查收 $49。
-2. 豁免政策：如果检查后客户同意由我们维修，这 $49 检查费将直接豁免/抵扣 (Waive)。
-3. 报价基础：普通清洗 $49起，药水洗 $130起。
-4. 视觉诊断：分析照片原因，回复须精简（2句内）。
-5. 免责声明：图片分析后必须说明“AI诊断仅供参考，以师傅现场检查为准”。
+你现在是KBE冷气专家。语言：{lang}。
+回复精简（2句内）。
+重要政策：检查费$49，维修可抵扣(Waive)。
+报价：普通洗$49起，药水洗$130起。
+图片诊断：必加免责声明“AI诊断仅供参考，以师傅检查为准”。
+预约引导：https://wa.me/6588972601
 """
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel(model_name="gemini-2.5-flash", system_instruction=system_instruction)
@@ -127,11 +137,11 @@ if st.session_state.chat_session is None:
     st.session_state.chat_session = model.start_chat(history=[])
 
 # ==========================================
-# 6. 聊天历史显示
+# 6. 聊天历史
 # ==========================================
 st.markdown("---")
 if not st.session_state.messages:
-    welcome = "您好！我是 KBE 专家。我可以为您报价，或通过照片诊断冷气故障。" if lang=="中文" else "Hello! I'm KBE expert. I can provide quotes or diagnose issues via photos."
+    welcome = "您好！我是 KBE 专家。我可以为您报价，或通过照片诊断故障。" if lang=="中文" else "Hello! I'm KBE expert. I can provide quotes or diagnose issues via photos."
     with st.chat_message("assistant", avatar="❄️"): st.write(welcome)
 
 for msg in st.session_state.messages:
@@ -139,13 +149,12 @@ for msg in st.session_state.messages:
         st.markdown(msg["content"])
 
 # ==========================================
-# 7. 对话底栏 (相机图标 + 输入框)
+# 7. 对话底栏 (相机上传 + 输入框)
 # ==========================================
-# 紧凑的上传列布局
+# 🎯 限制图片最大为 50MB
 up_c1, up_c2 = st.columns([4, 1])
 with up_c2:
-    # 限制 50MB，相机图标
-    uploaded_file = st.file_uploader("📷", type=["jpg", "png", "jpeg"], label_visibility="collapsed")
+    uploaded_file = st.file_uploader("📷", type=["jpg", "png", "jpeg"], label_visibility="collapsed", help="Max 50MB")
     if uploaded_file and uploaded_file.size > 50 * 1024 * 1024:
         st.error("Max 50MB!")
         uploaded_file = None
@@ -174,15 +183,3 @@ if prompt or uploaded_file:
             st.session_state.messages.append({"role": "assistant", "content": final_res})
         except Exception as e:
             st.error(f"Error: {e}")
-
-# ==========================================
-# 8. 底部社交媒体链接
-# ==========================================
-st.markdown(
-    '<div style="text-align:center; font-size:12px; color:gray; margin-top:30px;">'
-    '<a href="https://www.facebook.com/kbeaircon/">Facebook</a> | '
-    '<a href="https://www.instagram.com/kbe_aircon/">Instagram</a> | '
-    '<a href="https://www.tiktok.com/@kbe_aircon">TikTok</a> | '
-    '<a href="https://www.xiaohongshu.com/user/profile/618a1a3a00000000010257e4">小红书</a>'
-    '</div>', unsafe_allow_html=True
-)
