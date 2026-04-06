@@ -4,19 +4,19 @@ import time
 from PIL import Image
 
 # ==========================================
-# 0. 核心初始化
+# 0. 核心状态初始化
 # ==========================================
 st.session_state.setdefault("messages", [])
 st.session_state.setdefault("current_lang", "中文")
 st.session_state.setdefault("chat_session", None)
 
 # ==========================================
-# 1. 配置与样式
+# 1. 配置与视觉样式
 # ==========================================
 try:
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 except KeyError:
-    st.error("⚠️ 未找到 API Key！请检查 Secrets 配置。")
+    st.error("⚠️ 未找到 API Key！请在 Streamlit Cloud Secrets 中配置。")
     st.stop()
 
 BRAND_COLOR = "#199ad6"
@@ -24,67 +24,68 @@ LOGO_URL = "https://www.kbe.com.sg/wp-content/uploads/2017/07/kbe-air-con-servic
 
 st.set_page_config(page_title="KBE AI 客服", page_icon="❄️", layout="centered")
 
-# 极致优化 CSS，缩小间距，美化按钮
+# 极致优化移动端布局
 st.markdown(f"""
 <style>
     div[data-testid="stHorizontalBlock"] {{ gap: 5px !important; }}
-    .stButton>button {{ border-radius: 8px; height: 2.5em; font-size: 14px; }}
+    .stButton>button {{ border-radius: 8px; height: 2.8em; font-size: 14px; border: 1px solid #eee; }}
     .stChatInput {{ margin-top: -20px; }}
-    /* 隐藏上传组件的多余文字，只留图标 */
     .stFileUploader section {{ padding: 0 !important; }}
+    /* 侧边栏样式优化 */
+    [data-testid="stSidebar"] {{ background-color: #f8f9fa; }}
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. 侧边栏：找回消失的公司信息
+# 2. 侧边栏：公司核心资讯 (更新了新地址)
 # ==========================================
 with st.sidebar:
-    st.image(LOGO_URL, width=200)
+    st.image(LOGO_URL, width=180)
     st.markdown("---")
     if st.session_state.current_lang == "中文":
-        st.header("🏢 公司资讯")
-        st.markdown("""
-        **🕒 办公时间:**
+        st.header("🏢 公司信息")
+        st.markdown(f"""
+        **📍 办公地址:**
+        53 Ubi Ave 1, #03-47
+        Paya Ubi Industrial Park,
+        Singapore 408934
+        
+        **🕒 营业时间:**
         - 周一至五: 8:30 AM - 5:30 PM
         - 周六: 8:30 AM - 12:30 PM
-        - 周日及公假: 休息
         
-        **📍 总部地址:**
-        - Blk 1014 Geylang East Ave 3 
-        - #02-236, Singapore 389729
-        
-        **☎️ 联络电话:**
-        - 办公室: 6506 7330
-        - 24小时热线: 8897 2601
+        **☎️ 联络方式:**
+        - 办公室: `65067330`
+        - 24h热线: `88972601`
         """)
     else:
         st.header("🏢 Company Info")
-        st.markdown("""
-        **🕒 Office Hours:**
+        st.markdown(f"""
+        **📍 Address:**
+        53 Ubi Ave 1, #03-47
+        Paya Ubi Industrial Park,
+        Singapore 408934
+        
+        **🕒 Operating Hours:**
         - Mon-Fri: 8:30 AM - 5:30 PM
         - Sat: 8:30 AM - 12:30 PM
-        - Sun & PH: Closed
-        
-        **📍 Address:**
-        - Blk 1014 Geylang East Ave 3 
-        - #02-236, Singapore 389729
         
         **☎️ Contact:**
-        - Office: 6506 7330
-        - 24h Hotline: 8897 2601
+        - Office: `65067330`
+        - 24h Hotline: `88972601`
         """)
     st.markdown("---")
-    if st.button("🗑️ 清空对话 / Clear Chat"):
+    if st.button("🗑️ 清空对话 / Clear"):
         st.session_state.messages = []
         st.session_state.chat_session = None
         st.rerun()
 
 # ==========================================
-# 3. 首页顶部 (Logo & 语言切换)
+# 3. 首页顶部 (Logo 与 语言切换)
 # ==========================================
 t_col1, t_col2 = st.columns([1, 1])
 with t_col1:
-    st.image(LOGO_URL, width=120)
+    st.image(LOGO_URL, width=110)
 with t_col2:
     selected_lang = st.segmented_control(
         "Lang", ["中文", "English"], 
@@ -101,7 +102,7 @@ title = "智能客服与报价助手" if lang=="中文" else "AI Quote Assistant
 st.markdown(f"<h3 style='color:{BRAND_COLOR}; margin-top:-10px;'>{title}</h3>", unsafe_allow_html=True)
 
 # ==========================================
-# 4. 横向导航按钮 (并排显示)
+# 4. 横向快捷导航 (三金刚按钮)
 # ==========================================
 b1, b2, b3 = st.columns(3)
 b1.link_button("💬 WhatsApp", "https://wa.me/6588972601", use_container_width=True)
@@ -109,13 +110,16 @@ b2.link_button("📞 拨打电话", "tel:65067330", use_container_width=True)
 b3.link_button("🌐 官方网站", "https://www.kbe.com.sg/", use_container_width=True)
 
 # ==========================================
-# 5. 模型初始化
+# 5. 模型初始化与商业逻辑
 # ==========================================
 system_instruction = f"""
-你现在是 KBE 公司的冷气专家。语言：{lang}。回复简短（2句）。
-【重要政策】上门检查费 $49，如果后期由我们维修，这 $49 会被 Waive (豁免/抵扣)。
-【报价】普通洗 $49起，药水洗 $130起。
-【视觉诊断】分析图片原因，必加免责声明：AI 诊断仅供参考，实际以师傅上门为准。
+你现在是 KBE 公司的冷气专家。语言：{lang}。
+【重要商业政策】
+1. 检查费：上门检查收 $49。
+2. 豁免政策：如果检查后客户同意由我们维修，这 $49 检查费将直接豁免/抵扣 (Waive)。
+3. 报价基础：普通清洗 $49起，药水洗 $130起。
+4. 视觉诊断：分析照片原因，回复须精简（2句内）。
+5. 免责声明：图片分析后必须说明“AI诊断仅供参考，以师傅现场检查为准”。
 """
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel(model_name="gemini-2.5-flash", system_instruction=system_instruction)
@@ -123,11 +127,11 @@ if st.session_state.chat_session is None:
     st.session_state.chat_session = model.start_chat(history=[])
 
 # ==========================================
-# 6. 聊天记录显示
+# 6. 聊天历史显示
 # ==========================================
 st.markdown("---")
 if not st.session_state.messages:
-    welcome = "您好！请问今天有什么可以帮您？您可以直接拍照发给我诊断故障。" if lang=="中文" else "Hello! How can I help you today? You can send a photo for diagnosis."
+    welcome = "您好！我是 KBE 专家。我可以为您报价，或通过照片诊断冷气故障。" if lang=="中文" else "Hello! I'm KBE expert. I can provide quotes or diagnose issues via photos."
     with st.chat_message("assistant", avatar="❄️"): st.write(welcome)
 
 for msg in st.session_state.messages:
@@ -135,18 +139,18 @@ for msg in st.session_state.messages:
         st.markdown(msg["content"])
 
 # ==========================================
-# 7. 对话底栏 (相机 Icon + 输入框)
+# 7. 对话底栏 (相机图标 + 输入框)
 # ==========================================
-# 我们在输入框正上方创造一个非常紧凑的上传区
-up_col1, up_col2 = st.columns([4, 1])
-with up_col2:
+# 紧凑的上传列布局
+up_c1, up_c2 = st.columns([4, 1])
+with up_c2:
     # 限制 50MB，相机图标
     uploaded_file = st.file_uploader("📷", type=["jpg", "png", "jpeg"], label_visibility="collapsed")
     if uploaded_file and uploaded_file.size > 50 * 1024 * 1024:
         st.error("Max 50MB!")
         uploaded_file = None
 
-prompt = st.chat_input("描述问题..." if lang=="中文" else "Describe issue...")
+prompt = st.chat_input("描述问题或上传照片..." if lang=="中文" else "Describe issue or upload photo...")
 
 if prompt or uploaded_file:
     user_msg = prompt if prompt else "📸 [发送了一张照片]"
@@ -164,16 +168,15 @@ if prompt or uploaded_file:
         try:
             response = st.session_state.chat_session.send_message(content)
             final_res = response.text
-            # 自动加免责声明
             if uploaded_file:
-                final_res += ("\n\n> 💡 提示：AI 图片分析仅供参考，实际请以师傅检查为准。" if lang=="中文" else "\n\n> 💡 Note: AI analysis is for reference only.")
+                final_res += ("\n\n> 💡 提示：AI 图片分析仅供参考，实际以师傅检查为准。" if lang=="中文" else "\n\n> 💡 Note: AI analysis is for reference only.")
             msg_ph.markdown(final_res)
             st.session_state.messages.append({"role": "assistant", "content": final_res})
         except Exception as e:
             st.error(f"Error: {e}")
 
 # ==========================================
-# 8. 底部社交媒体
+# 8. 底部社交媒体链接
 # ==========================================
 st.markdown(
     '<div style="text-align:center; font-size:12px; color:gray; margin-top:30px;">'
