@@ -24,12 +24,17 @@ LOGO_URL = "https://www.kbe.com.sg/wp-content/uploads/2017/07/kbe-air-con-servic
 
 st.set_page_config(page_title="KBE AI", page_icon="❄️", layout="centered")
 
-# 强制隐藏原生上传进度条并优化布局
+# 极致优化 CSS
 st.markdown(f"""
 <style>
-    .stChatInput {{ margin-top: -20px; }}
-    .stFileUploaderSection {{ padding: 0 !important; }}
-    [data-testid="stBaseButton-secondary"] {{ border-radius: 10px; }}
+    /* 移除上传组件的多余边距 */
+    .stFileUploader {{ padding-top: 0; }}
+    /* 缩小按钮间距 */
+    div[data-testid="stHorizontalBlock"] {{ gap: 5px !important; }}
+    /* 调整聊天输入框与上方组件的距离 */
+    .stChatInput {{ margin-top: -15px; }}
+    /* 免责声明样式 */
+    .disclaimer {{ font-size: 12px; color: #888; border-left: 2px solid {BRAND_COLOR}; padding-left: 10px; margin-top: 10px; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -52,24 +57,28 @@ with c2:
 
 lang = st.session_state.current_lang
 if lang == "中文":
+    title = "智能客服与报价助手"
     welcome = "您好！我是 KBE 专家。我可以为您报价，或通过照片诊断故障。"
     hint = "描述问题..."
     disclaimer = "\n\n> 💡 **温馨提示**：AI 图片分析结果仅供参考，实际请以师傅上门检查为准。"
-    wa_text, call_text, web_text = "WhatsApp", "拨打电话", "官方网站"
+    wa_n, call_n, web_n = "WhatsApp", "拨打中心", "官网"
 else:
+    title = "AI Service & Quote"
     welcome = "Hello! I am KBE expert. I can provide quotes or diagnose issues via photos."
     hint = "Describe issue..."
     disclaimer = "\n\n> 💡 **Note**: AI diagnosis is for reference only. On-site inspection is recommended."
-    wa_text, call_text, web_text = "WhatsApp", "Call Us", "Website"
+    wa_n, call_n, web_n = "WhatsApp", "Call Us", "Website"
+
+st.markdown(f"<h3 style='color:{BRAND_COLOR};'>{title}</h3>", unsafe_allow_html=True)
 
 # ==========================================
-# 3. 首页三金刚按钮 (并排显示)
+# 3. 三金刚按钮 (横向一排: Icon + 名字)
 # ==========================================
-st.markdown("---")
+# 使用 columns(3) 实现横向排布
 b1, b2, b3 = st.columns(3)
-b1.link_button(f"🟢 {wa_text}", "https://wa.me/6588972601", use_container_width=True)
-b2.link_button(f"🔵 {call_text}", "tel:65067330", use_container_width=True)
-b3.link_button(f"⚪ {web_text}", "https://www.kbe.com.sg/", use_container_width=True)
+b1.link_button(f"💬 {wa_n}", "https://wa.me/6588972601", use_container_width=True)
+b2.link_button(f"📞 {call_n}", "tel:65067330", use_container_width=True)
+b3.link_button(f"🌐 {web_n}", "https://www.kbe.com.sg/", use_container_width=True)
 
 # ==========================================
 # 4. 模型初始化
@@ -81,7 +90,7 @@ if st.session_state.chat_session is None:
     st.session_state.chat_session = model.start_chat(history=[])
 
 # ==========================================
-# 5. 聊天区
+# 5. 聊天记录显示
 # ==========================================
 if not st.session_state.messages:
     with st.chat_message("assistant", avatar="❄️"): st.write(welcome)
@@ -91,42 +100,51 @@ for msg in st.session_state.messages:
         st.markdown(msg["content"])
 
 # ==========================================
-# 6. 对话底栏 (上传 Icon + 输入框)
+# 6. 底部功能区 (输入框 + 紧贴下方的上传)
 # ==========================================
 st.markdown("---")
-# 🎯 关键修改：在输入框正上方建立一列，专门放上传 Icon，右对齐贴近发送键
-up_c1, up_c2 = st.columns([4, 1])
-with up_c2:
-    # 限制 50MB
-    uploaded_file = st.file_uploader("📷", type=["jpg", "png", "jpeg"], label_visibility="collapsed")
+
+# 聊天输入框
+prompt = st.chat_input(hint)
+
+# 将上传按钮放在输入框下方，靠右对齐，模拟发送键旁边的位置
+up_col1, up_col2 = st.columns([3, 1])
+with up_col2:
+    uploaded_file = st.file_uploader(
+        "📷 (Max 50MB)", 
+        type=["jpg", "png", "jpeg"], 
+        label_visibility="collapsed"
+    )
+
+# 处理输入
+if prompt or uploaded_file:
+    # 简单的文件大小检查
     if uploaded_file and uploaded_file.size > 50 * 1024 * 1024:
-        st.error("Max 50MB!")
-        uploaded_file = None
+        st.error("文件太大 (Max 50MB)！" if lang=="中文" else "File too large (Max 50MB)!")
+    else:
+        # 如果有输入，先添加到消息
+        user_msg = prompt if prompt else "📸 [发送了一张照片]"
+        st.session_state.messages.append({"role": "user", "content": user_msg})
+        with st.chat_message("user"): st.write(user_msg)
 
-if prompt := st.chat_input(hint):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"): st.write(prompt)
+        with st.chat_message("assistant", avatar="❄️"):
+            msg_ph = st.empty()
+            content = []
+            if prompt: content.append(prompt)
+            if uploaded_file:
+                img = Image.open(uploaded_file)
+                content.append(img)
+            
+            # 如果什么都没写也没发图（误触），不处理
+            if content:
+                response = st.session_state.chat_session.send_message(content)
+                final_res = response.text + (disclaimer if uploaded_file else "")
+                msg_ph.markdown(final_res)
+                st.session_state.messages.append({"role": "assistant", "content": final_res})
 
-    with st.chat_message("assistant", avatar="❄️"):
-        msg_ph = st.empty()
-        content = [prompt]
-        has_img = False
-        
-        if uploaded_file:
-            img = Image.open(uploaded_file)
-            content.append(img)
-            has_img = True
-            st.session_state.messages.append({"role": "user", "content": "📸 [Photo Uploaded]"})
-
-        response = st.session_state.chat_session.send_message(content)
-        final_res = response.text + (disclaimer if has_img else "")
-        msg_ph.markdown(final_res)
-    
-    st.session_state.messages.append({"role": "assistant", "content": final_res})
-
-# 底部社交媒体
+# 底部社交媒体链接
 st.markdown(
-    '<div style="text-align:center; font-size:12px; color:gray; margin-top:20px;">'
+    '<div style="text-align:center; font-size:12px; color:gray; margin-top:30px;">'
     '<a href="https://www.facebook.com/kbeaircon/">Facebook</a> | '
     '<a href="https://www.instagram.com/kbe_aircon/">Instagram</a> | '
     '<a href="https://www.tiktok.com/@kbe_aircon">TikTok</a> | '
