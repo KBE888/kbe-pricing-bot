@@ -11,7 +11,7 @@ st.session_state.setdefault("current_lang", "中文")
 st.session_state.setdefault("chat_session", None)
 
 # ==========================================
-# 1. 核心配置
+# 1. 配置与样式
 # ==========================================
 try:
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
@@ -22,18 +22,27 @@ except KeyError:
 BRAND_COLOR = "#199ad6"
 LOGO_URL = "https://www.kbe.com.sg/wp-content/uploads/2017/07/kbe-air-con-servicing-Singapore-Logo.png"
 
-st.set_page_config(page_title="KBE ❄️ 智能客服", page_icon="❄️", layout="centered")
+st.set_page_config(page_title="KBE AI", page_icon="❄️", layout="centered")
+
+# 强制隐藏原生上传进度条并优化布局
+st.markdown(f"""
+<style>
+    .stChatInput {{ margin-top: -20px; }}
+    .stFileUploaderSection {{ padding: 0 !important; }}
+    [data-testid="stBaseButton-secondary"] {{ border-radius: 10px; }}
+</style>
+""", unsafe_allow_html=True)
 
 # ==========================================
-# 2. 界面文本与语言处理
+# 2. 首页顶部 (Logo & 语言)
 # ==========================================
-top_col1, top_col2 = st.columns([1, 1])
-with top_col1:
-    st.image(LOGO_URL, width=150)
-with top_col2:
+c1, c2 = st.columns([1, 1])
+with c1:
+    st.image(LOGO_URL, width=130)
+with c2:
     selected_lang = st.segmented_control(
-        "Language / 语言", ["中文", "English"], 
-        default=st.session_state.current_lang, key="lang_selector"
+        "Lang", ["中文", "English"], 
+        default=st.session_state.current_lang, key="lang_selector", label_visibility="collapsed"
     )
     if selected_lang and selected_lang != st.session_state.current_lang:
         st.session_state.current_lang = selected_lang
@@ -43,87 +52,84 @@ with top_col2:
 
 lang = st.session_state.current_lang
 if lang == "中文":
-    title, subtitle = "智能客服与报价助手", "为您提供即时报价及专业的冷气疑难解答。"
-    welcome_msg = "您好！我是 KBE 专家。我可以为您报价，或通过照片诊断故障。"
-    chat_hint = "描述您的问题或上传照片..."
-    upload_hint = "📸 点击上传照片"
-    disclaimer = "\n\n> 💡 **温馨提示**：AI 图片分析结果仅供参考，实际情况可能因拍摄角度或光线有所差异。建议联系师傅上门以获取最精准的判断。"
+    welcome = "您好！我是 KBE 专家。我可以为您报价，或通过照片诊断故障。"
+    hint = "描述问题..."
+    disclaimer = "\n\n> 💡 **温馨提示**：AI 图片分析结果仅供参考，实际请以师傅上门检查为准。"
+    wa_text, call_text, web_text = "WhatsApp", "拨打电话", "官方网站"
 else:
-    title, subtitle = "AI Service & Quote", "Providing instant quotes and professional troubleshooting."
-    welcome_msg = "Hello! I am KBE expert. I can provide quotes or diagnose issues via photos."
-    chat_hint = "Describe your issue or upload photo..."
-    upload_hint = "📸 Click to upload photo"
-    disclaimer = "\n\n> 💡 **Friendly Note**: AI image analysis is for reference only. Actual issues may vary due to photo quality. We recommend a technician's on-site inspection for accurate diagnosis."
+    welcome = "Hello! I am KBE expert. I can provide quotes or diagnose issues via photos."
+    hint = "Describe issue..."
+    disclaimer = "\n\n> 💡 **Note**: AI diagnosis is for reference only. On-site inspection is recommended."
+    wa_text, call_text, web_text = "WhatsApp", "Call Us", "Website"
 
-st.markdown(f"<h2 style='color:{BRAND_COLOR}; margin-top:-10px;'>{title}</h2>", unsafe_allow_html=True)
-st.caption(subtitle)
-
-# 快速联系按钮
+# ==========================================
+# 3. 首页三金刚按钮 (并排显示)
+# ==========================================
 st.markdown("---")
 b1, b2, b3 = st.columns(3)
-b1.markdown("[![WA](https://img.shields.io/badge/WhatsApp-25D366?style=flat&logo=whatsapp&logoColor=white)](https://wa.me/6588972601)")
-b2.markdown("[![Call](https://img.shields.io/badge/Call-0078D4?style=flat&logo=phone&logoColor=white)](tel:65067330)")
-b3.markdown("[![Web](https://img.shields.io/badge/Website-gray?style=flat)](https://www.kbe.com.sg/)")
+b1.link_button(f"🟢 {wa_text}", "https://wa.me/6588972601", use_container_width=True)
+b2.link_button(f"🔵 {call_text}", "tel:65067330", use_container_width=True)
+b3.link_button(f"⚪ {web_text}", "https://www.kbe.com.sg/", use_container_width=True)
 
 # ==========================================
-# 3. AI 模型设置
+# 4. 模型初始化
 # ==========================================
-system_instruction = f"""
-你现在是 KBE 公司的专家。语言：{lang}。
-1. 视觉诊断：分析图片原因，回复精简（2-3句）。
-2. 重要：在分析完图片后，必须提醒客户 AI 诊断仅供参考。
-3. 预约：引导点击 WhatsApp https://wa.me/6588972601。
-"""
+system_instruction = f"你是KBE冷气专家。语言：{lang}。简短回复。分析图片后必须加免责声明。预约：https://wa.me/6588972601"
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel(model_name="gemini-2.5-flash", system_instruction=system_instruction)
 if st.session_state.chat_session is None:
     st.session_state.chat_session = model.start_chat(history=[])
 
 # ==========================================
-# 4. 聊天界面与“对话框内”上传
+# 5. 聊天区
 # ==========================================
-# 显示历史消息
 if not st.session_state.messages:
-    with st.chat_message("assistant", avatar="❄️"): st.write(welcome_msg)
+    with st.chat_message("assistant", avatar="❄️"): st.write(welcome)
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"], avatar="❄️" if msg["role"]=="assistant" else None):
         st.markdown(msg["content"])
 
-# --- 模拟对话框内的上传按钮 ---
-# 在输入框上方放置一个小的上传组件，模拟在对话框内部的操作
-with st.container():
-    uploaded_file = st.file_uploader(upload_hint, type=["jpg", "jpeg", "png"], label_visibility="collapsed")
+# ==========================================
+# 6. 对话底栏 (上传 Icon + 输入框)
+# ==========================================
+st.markdown("---")
+# 🎯 关键修改：在输入框正上方建立一列，专门放上传 Icon，右对齐贴近发送键
+up_c1, up_c2 = st.columns([4, 1])
+with up_c2:
+    # 限制 50MB
+    uploaded_file = st.file_uploader("📷", type=["jpg", "png", "jpeg"], label_visibility="collapsed")
+    if uploaded_file and uploaded_file.size > 50 * 1024 * 1024:
+        st.error("Max 50MB!")
+        uploaded_file = None
 
-if prompt := st.chat_input(chat_hint):
+if prompt := st.chat_input(hint):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"): st.write(prompt)
 
     with st.chat_message("assistant", avatar="❄️"):
         msg_ph = st.empty()
         content = [prompt]
-        is_image = False
+        has_img = False
         
         if uploaded_file:
             img = Image.open(uploaded_file)
             content.append(img)
-            is_image = True
+            has_img = True
             st.session_state.messages.append({"role": "user", "content": "📸 [Photo Uploaded]"})
 
         response = st.session_state.chat_session.send_message(content)
-        final_text = response.text
-        
-        # 如果有图片，追加免责声明
-        if is_image:
-            final_text += disclaimer
-            
-        msg_ph.markdown(final_text)
+        final_res = response.text + (disclaimer if has_img else "")
+        msg_ph.markdown(final_res)
     
-    st.session_state.messages.append({"role": "assistant", "content": final_text})
+    st.session_state.messages.append({"role": "assistant", "content": final_res})
 
-# 底部链接
-st.markdown("---")
-st.markdown('<div style="text-align: center; font-size: 12px; color: gray;">'
-            '<a href="https://www.facebook.com/kbeaircon/">Facebook</a> | '
-            '<a href="https://www.instagram.com/kbe_aircon/">Instagram</a> | '
-            '<a href="https://www.tiktok.com/@kbe_aircon">TikTok</a></div>', unsafe_allow_html=True)
+# 底部社交媒体
+st.markdown(
+    '<div style="text-align:center; font-size:12px; color:gray; margin-top:20px;">'
+    '<a href="https://www.facebook.com/kbeaircon/">Facebook</a> | '
+    '<a href="https://www.instagram.com/kbe_aircon/">Instagram</a> | '
+    '<a href="https://www.tiktok.com/@kbe_aircon">TikTok</a> | '
+    '<a href="https://www.xiaohongshu.com/user/profile/618a1a3a00000000010257e4">小红书</a>'
+    '</div>', unsafe_allow_html=True
+)
