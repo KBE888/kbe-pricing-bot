@@ -37,7 +37,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. 侧边栏：公司核心资讯 (地址/时间/价格说明)
+# 2. 侧边栏：公司核心资讯 (已移除费用说明)
 # ==========================================
 with st.sidebar:
     st.image(LOGO_URL, width=180)
@@ -53,10 +53,6 @@ with st.sidebar:
         **🕒 营业时间:**
         - 周一至五: 8:30 AM - 5:30 PM
         - 周六: 8:30 AM - 12:30 PM
-        
-        **💰 费用说明:**
-        - 单独检查费: $49
-        - **优惠**: 若进行维修/清洗，检查费全额免除 (Waive)。
         """)
     else:
         st.header("🏢 Company Info")
@@ -69,10 +65,6 @@ with st.sidebar:
         **🕒 Operating Hours:**
         - Mon-Fri: 8:30 AM - 5:30 PM
         - Sat: 8:30 AM - 12:30 PM
-        
-        **💰 Fee Policy:**
-        - Transport/Inspection: $49
-        - **Offer**: Waived if you proceed with service/repair.
         """)
     st.markdown("---")
     if st.button("🗑️ 清空对话 / Clear Chat"):
@@ -98,16 +90,18 @@ with t_col2:
         st.rerun()
 
 lang = st.session_state.current_lang
-st.markdown(f"<h3 style='color:{BRAND_COLOR}; margin-top:-10px;'>{'KBE 智能客服' if lang=='中文' else 'KBE AI Service'}</h3>", unsafe_allow_html=True)
+# 标题更新为“KBE智能客服”
+st.markdown(f"<h3 style='color:{BRAND_COLOR}; margin-top:-10px;'>{'KBE智能客服' if lang=='中文' else 'KBE AI Service'}</h3>", unsafe_allow_html=True)
 
 # ==========================================
-# 4. 横向快捷导航 (WhatsApp/Call/Web) & 社交媒体
+# 4. 横向快捷导航 (1x3 并排) & 社交媒体
 # ==========================================
 b1, b2, b3 = st.columns(3)
 b1.link_button("💬 WhatsApp", "https://wa.me/6588972601", use_container_width=True)
 b2.link_button("📞 拨打电话" if lang=="中文" else "📞 Call Us", "tel:65067330", use_container_width=True)
 b3.link_button("🌐 官方网站" if lang=="中文" else "🌐 Website", "https://www.kbe.com.sg/", use_container_width=True)
 
+# 社交媒体链接 (紧贴下方)
 st.markdown(f"""
 <div class="social-links">
     <a href="https://www.facebook.com/kbeaircon/">Facebook</a> | 
@@ -118,27 +112,19 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 5. 核心 AI 逻辑 (强化检查费逻辑)
+# 5. 核心 AI 逻辑 (内部保留价格与检查费逻辑)
 # ==========================================
 system_instruction = f"""
 你现在是 KBE 公司的冷气专家。语言：{lang}。回复非常精简（2句内）。
 
-【关于检查费的解释逻辑（重中之重）】
-1. 如果顾客问“价格包含检查费吗”或类似问题：
-   - 明确告知：我们的服务报价（如$49清洗费）已经包含了上门检查的费用。
-   - 只有在“仅检查、不进行任何维修或清洗”的情况下，才单独收取 $49 检查费。
-   - 总结一句话：只要您修/洗冷气，检查费就是免费的。
-
-【详细价格表】
-1. 普通清洗 (Normal Wash) - 壁挂式: 
-   - 1台: $49 | 2台: $64 | 3台: $96 | 4台: $116 | 5台: $140
-   - (天花板机/风管机：每台加收 $5)
-2. 药水清洁 (Chemical Wash) - 壁挂式: 
-   - 9-12k BTU: $130/台 | 18k BTU: $200/台 | 24k BTU: $230/台
-3. 补充冷媒: R410a: $110起 | R32: $145起。
+【核心政策 - 内部掌握】
+1. 检查费：单独上门检查收 $49。
+2. 豁免政策：若客户进行维修或清洗，这 $49 检查费将全额豁免 (Waive)。
+3. 报价逻辑：服务费中已包含检查。只要修/洗冷气，就不额外收那 $49。
+4. 价格参考：普通清洗 $49起，药水洗 $130起。
 
 【对话原则】
-- 视觉诊断：分析图片给原因。
+- 视觉诊断：分析图片原因，必加免责声明。
 - 引导预约：https://wa.me/6588972601
 """
 
@@ -148,7 +134,7 @@ if st.session_state.chat_session is None:
     st.session_state.chat_session = model.start_chat(history=[])
 
 # ==========================================
-# 6. 聊天区域
+# 6. 聊天历史显示
 # ==========================================
 st.markdown("---")
 if not st.session_state.messages:
@@ -162,6 +148,7 @@ for msg in st.session_state.messages:
 # ==========================================
 # 7. 对话底栏 (相机上传 + 输入框)
 # ==========================================
+# 限制图片最大为 50MB
 up_c1, up_c2 = st.columns([4, 1])
 with up_c2:
     uploaded_file = st.file_uploader("📷", type=["jpg", "png", "jpeg"], label_visibility="collapsed", help="Max 50MB")
@@ -188,7 +175,7 @@ if prompt or uploaded_file:
             response = st.session_state.chat_session.send_message(content)
             final_res = response.text
             if uploaded_file:
-                final_res += ("\n\n> 💡 提示：AI 图片分析仅供参考，实际以师傅现场检查为准。" if lang=="中文" else "\n\n> 💡 Note: AI analysis is for reference only.")
+                final_res += ("\n\n> 💡 提示：AI 图片分析仅供参考，实际以师傅检查为准。" if lang=="中文" else "\n\n> 💡 Note: AI analysis is for reference only.")
             msg_ph.markdown(final_res)
             st.session_state.messages.append({"role": "assistant", "content": final_res})
         except Exception as e:
